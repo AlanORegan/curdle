@@ -41,9 +41,10 @@ header .side.right{justify-content:flex-end}
 #keyboard{padding:0 8px 8px;user-select:none;flex-shrink:0}
 .krow{display:flex;width:100%;margin:0 auto 8px;touch-action:manipulation}
 .krow .half{flex:.5}
-.key{font-family:inherit;font-weight:700;border:0;padding:0;margin:0 6px 0 0;height:58px;border-radius:4px;cursor:pointer;background:var(--key);color:var(--key-text);flex:1;display:flex;justify-content:center;align-items:center;text-transform:uppercase;font-size:13px}
+.key{font-family:inherit;font-weight:700;border:0;padding:0;margin:0 6px 0 0;height:58px;border-radius:4px;cursor:pointer;background:var(--key);color:var(--key-text);flex:1;display:flex;justify-content:center;align-items:center;text-transform:uppercase;font-size:22px}
 .key:last-of-type{margin:0}
-.key.wide{flex:1.5;font-size:12px}
+.key.wide{flex:1.5;font-size:14px}
+.key[data-key=back]{font-size:22px}
 .key[data-state=correct]{background:var(--green);color:#fff}
 .key[data-state=present]{background:var(--yellow);color:#fff}
 .key[data-state=absent]{background:var(--gray);color:#fff}
