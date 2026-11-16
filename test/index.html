@@ -43,6 +43,8 @@ header .side.right{justify-content:flex-end}
 #keyboard{padding:0 8px 8px;user-select:none;flex-shrink:0}
 .krow{display:flex;width:100%;margin:0 auto 8px;touch-action:manipulation}
 .krow .half{flex:.5}
+body.nofocus .krow.spacerow{display:none}
+.key[data-key=space]{flex:6;font-size:14px;height:44px;text-transform:none}
 .key{font-family:inherit;font-weight:700;border:0;padding:0;margin:0 6px 0 0;height:58px;border-radius:4px;cursor:pointer;background:var(--key);color:var(--key-text);flex:1;display:flex;justify-content:center;align-items:center;text-transform:uppercase;font-size:22px}
 .key:last-of-type{margin:0}
 .key.wide{flex:1.5;font-size:14px}
@@ -131,6 +133,7 @@ body:not(.dark) .overlay{background:rgba(255,255,255,.5)}
   <button class="icon close" data-close>&times;</button>
   <h2>Settings</h2>
   <div class="setting"><div>Hard mode<div class="d">Any revealed hints must be used in subsequent guesses</div></div><button class="switch" id="sw-hard"></button></div>
+  <div class="setting"><div>Focus mode<div class="d">Tap a letter in your current guess to change just that letter, and use the blank key to skip a letter</div></div><button class="switch" id="sw-focus"></button></div>
   <div class="setting"><div>Dark theme</div><button class="switch" id="sw-dark"></button></div>
   <div class="setting"><div>High contrast mode<div class="d">For improved colour vision</div></div><button class="switch" id="sw-contrast"></button></div>
   <p class="small" style="margin-top:14px">Curdle &mdash; offline copy using the original 2,315-answer / 12,972-word lists from Josh Wardle's site (January 2022). Stats are stored in this browser only.</p>
@@ -248,12 +251,12 @@ if (typeof document !== "undefined" && document.getElementById("board")) (functi
 
   // keyboard
   var kbEl = document.getElementById("keyboard"), keyEls = {};
-  [["q","w","e","r","t","y","u","i","o","p"],["_","a","s","d","f","g","h","j","k","l","_"],["enter","z","x","c","v","b","n","m","back"]].forEach(function (keys) {
-    var kr = document.createElement("div"); kr.className = "krow";
+  [["q","w","e","r","t","y","u","i","o","p"],["_","a","s","d","f","g","h","j","k","l","_"],["enter","z","x","c","v","b","n","m","back"],["_","_","space","_","_"]].forEach(function (keys) {
+    var kr = document.createElement("div"); kr.className = "krow" + (keys.indexOf("space") >= 0 ? " spacerow" : "");
     keys.forEach(function (k) {
       if (k === "_") { var sp = document.createElement("div"); sp.className = "half"; kr.appendChild(sp); return; }
       var b = document.createElement("button"); b.className = "key" + (k.length > 1 ? " wide" : ""); b.type = "button";
-      b.textContent = k === "back" ? "\u232B" : k; b.setAttribute("data-key", k);
+      b.textContent = k === "back" ? "\u232B" : (k === "space" ? "blank" : k); b.setAttribute("data-key", k);
       b.addEventListener("click", function (e) { e.preventDefault(); b.blur(); press(k); });
       kr.appendChild(b); if (k.length === 1) keyEls[k] = b;
     });
@@ -264,6 +267,7 @@ if (typeof document !== "undefined" && document.getElementById("board")) (functi
     if (document.querySelector(".overlay.open")) { if (e.key === "Escape") closeAll(); return; }
     if (e.key === "Enter") { e.preventDefault(); press("enter"); }
     else if (e.key === "Backspace") press("back");
+    else if (e.key === " ") { e.preventDefault(); press("space"); }
     else if (/^[a-zA-Z]$/.test(e.key)) press(e.key.toLowerCase());
   });
 
@@ -277,7 +281,7 @@ if (typeof document !== "undefined" && document.getElementById("board")) (functi
     for (var r = 0; r < 6; r++) {
       var word = r < state.guesses.length ? state.guesses[r] : (r === state.guesses.length ? state.current : "");
       for (var c = 0; c < 5; c++) {
-        var t = rows[r].tiles[c], ch = (word[c] || "").trim(); t.textContent = ch;
+        var t = rows[r].tiles[c], ch = (word[c] || "").trim(); if (ch === ".") ch = ""; t.textContent = ch;
         t.className = "tile" + (r === state.guesses.length && c === focusCol && state.status === "playing" ? " focus" : "");
         if (r < state.evals.length) t.setAttribute("data-state", state.evals[r][c]);
         else if (ch) t.setAttribute("data-state", "tbd"); else t.removeAttribute("data-state");
@@ -300,7 +304,7 @@ if (typeof document !== "undefined" && document.getElementById("board")) (functi
     row.tiles.forEach(function (t, c) {
       t.addEventListener("click", function (e) {
         e.preventDefault();
-        if (animating || state.status !== "playing" || r !== state.guesses.length) return;
+        if (animating || settings.focus === false || state.status !== "playing" || r !== state.guesses.length) return;
         focusCol = (focusCol === c) ? -1 : c; render();
       });
     });
@@ -314,6 +318,12 @@ if (typeof document !== "undefined" && document.getElementById("board")) (functi
       else { for (var i = 4; i >= 0; i--) if (a[i]) { a[i] = ""; break; } }
       setCur(a); render(); persist(); return;
     }
+    if (k === "space") {
+      if (settings.focus === false) return;
+      if (focusCol >= 0) a[focusCol] = "";
+      else { var js = a.indexOf(""); if (js < 0) return; a[js] = "."; }
+      setCur(a); render(); return;
+    }
     if (focusCol >= 0) a[focusCol] = k;
     else { var j = a.indexOf(""); if (j < 0) return; a[j] = k; }
     setCur(a); render();
@@ -325,7 +335,7 @@ if (typeof document !== "undefined" && document.getElementById("board")) (functi
   }
   function submit() {
     var g = state.current;
-    if (g.length < 5 || /\s/.test(g)) return shake("Not enough letters");
+    if (g.length < 5 || /[\s.]/.test(g)) return shake("Not enough letters");
     if (!isValidWord(g)) return shake("Not in word list");
     if (settings.hard) { var err = hardModeError(g, state.guesses, state.evals); if (err) return shake(err); }
     var ev = evaluate(g, state.answer), rowIdx = state.guesses.length;
@@ -444,6 +454,8 @@ if (typeof document !== "undefined" && document.getElementById("board")) (functi
     document.body.classList.toggle("dark", !!settings.dark);
     document.body.classList.toggle("contrast", !!settings.contrast);
     document.getElementById("sw-hard").classList.toggle("on", !!settings.hard);
+    document.getElementById("sw-focus").classList.toggle("on", settings.focus !== false);
+    document.body.classList.toggle("nofocus", settings.focus === false);
     document.getElementById("sw-dark").classList.toggle("on", !!settings.dark);
     document.getElementById("sw-contrast").classList.toggle("on", !!settings.contrast);
     save("settings", settings);
@@ -452,6 +464,7 @@ if (typeof document !== "undefined" && document.getElementById("board")) (functi
     if (!settings.hard && state.status === "playing" && state.guesses.length > 0) return toast("Hard mode can only be enabled at the start of a round", 2000);
     settings.hard = !settings.hard; applySettings();
   };
+  document.getElementById("sw-focus").onclick = function () { settings.focus = settings.focus === false; if (settings.focus === false) focusCol = -1; applySettings(); render(); };
   document.getElementById("sw-dark").onclick = function () { settings.dark = !settings.dark; applySettings(); };
   document.getElementById("sw-contrast").onclick = function () { settings.contrast = !settings.contrast; applySettings(); };
 
