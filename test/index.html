@@ -304,7 +304,7 @@ if (typeof document !== "undefined" && document.getElementById("board")) (functi
     row.tiles.forEach(function (t, c) {
       t.addEventListener("click", function (e) {
         e.preventDefault();
-        if (animating || settings.focus === false || state.status !== "playing" || r !== state.guesses.length) return;
+        if (animating || !settings.focus || state.status !== "playing" || r !== state.guesses.length) return;
         focusCol = (focusCol === c) ? -1 : c; render();
       });
     });
@@ -319,7 +319,7 @@ if (typeof document !== "undefined" && document.getElementById("board")) (functi
       setCur(a); render(); persist(); return;
     }
     if (k === "space") {
-      if (settings.focus === false) return;
+      if (!settings.focus) return;
       if (focusCol >= 0) a[focusCol] = "";
       else { var js = a.indexOf(""); if (js < 0) return; a[js] = "."; }
       setCur(a); render(); return;
@@ -454,8 +454,8 @@ if (typeof document !== "undefined" && document.getElementById("board")) (functi
     document.body.classList.toggle("dark", !!settings.dark);
     document.body.classList.toggle("contrast", !!settings.contrast);
     document.getElementById("sw-hard").classList.toggle("on", !!settings.hard);
-    document.getElementById("sw-focus").classList.toggle("on", settings.focus !== false);
-    document.body.classList.toggle("nofocus", settings.focus === false);
+    document.getElementById("sw-focus").classList.toggle("on", !!settings.focus);
+    document.body.classList.toggle("nofocus", !settings.focus);
     document.getElementById("sw-dark").classList.toggle("on", !!settings.dark);
     document.getElementById("sw-contrast").classList.toggle("on", !!settings.contrast);
     save("settings", settings);
@@ -464,7 +464,7 @@ if (typeof document !== "undefined" && document.getElementById("board")) (functi
     if (!settings.hard && state.status === "playing" && state.guesses.length > 0) return toast("Hard mode can only be enabled at the start of a round", 2000);
     settings.hard = !settings.hard; applySettings();
   };
-  document.getElementById("sw-focus").onclick = function () { settings.focus = settings.focus === false; if (settings.focus === false) focusCol = -1; applySettings(); render(); };
+  document.getElementById("sw-focus").onclick = function () { settings.focus = !settings.focus; if (!settings.focus) focusCol = -1; applySettings(); render(); };
   document.getElementById("sw-dark").onclick = function () { settings.dark = !settings.dark; applySettings(); };
   document.getElementById("sw-contrast").onclick = function () { settings.contrast = !settings.contrast; applySettings(); };
 
